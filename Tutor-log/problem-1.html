@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tutor Log — L1 Problem 1</title>
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  <style>
+    :root {
+      --ink: #1a2330;
+      --blue: #17365d;
+      --soft: #f3f7fb;
+      --you: #e8f1fb;
+      --tutor: #eef8f2;
+      --ask: #fff8df;
+      --line: #d8e1ea;
+      --accent: #3178c6;
+      --green: #1f6b4a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      max-width: 820px;
+      margin: 36px auto;
+      padding: 0 22px 80px;
+      font: 17px/1.65 system-ui, sans-serif;
+      color: var(--ink);
+    }
+    h1, h2 { color: var(--blue); line-height: 1.25; }
+    h1 { font-size: 1.55rem; margin-bottom: 6px; }
+    .meta { color: #5a6b7c; font-size: 14px; margin-bottom: 28px; }
+    .problem-box {
+      padding: 16px 18px;
+      background: var(--soft);
+      border-left: 4px solid var(--accent);
+      border-radius: 6px;
+      margin: 18px 0 28px;
+    }
+    .turn {
+      margin: 18px 0;
+      padding: 14px 16px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+    }
+    .turn.you { background: var(--you); }
+    .turn.tutor { background: var(--tutor); }
+    .turn.ask {
+      background: var(--ask);
+      border-color: #e2c86a;
+    }
+    .label {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .turn.you .label { color: #234d78; }
+    .turn.tutor .label { color: var(--green); }
+    .turn.ask .label { color: #8a6a00; }
+    .verdict {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 650;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .ok { background: #d8f0e3; color: #145c3a; }
+    .fix { background: #fff0c8; color: #7a5b00; }
+    .bad { background: #fde2e2; color: #8a1f1f; }
+    .equation {
+      padding: 10px 14px;
+      margin: 12px 0;
+      background: #fff;
+      border-left: 3px solid var(--accent);
+      overflow-x: auto;
+      border-radius: 4px;
+    }
+    ul, ol { padding-left: 1.25rem; }
+    li { margin: 6px 0; }
+    code { background: #eef1f4; padding: 2px 5px; border-radius: 4px; }
+    a { color: #1769aa; }
+    hr { border: none; border-top: 1px solid var(--line); margin: 32px 0; }
+    .status {
+      padding: 12px 14px;
+      background: #f7fafc;
+      border: 1px dashed var(--line);
+      border-radius: 6px;
+      font-size: 15px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Tutor log — Lecture 1, Problem 1</h1>
+  <p class="meta">
+    Observation aliasing &amp; the Markov property ·
+    <a href="../cs224r-study-pack.html#lecture-1">study pack</a> ·
+    <a href="../lecture-notes/priority-shortlist.html">priority shortlist</a> ·
+    Read top → bottom. Newest ask is at the bottom.
+  </p>
+
+  <div class="status">
+    <strong>Progress:</strong> Problem 1 complete — (a)(b)(c)(d) ✅
+  </div>
+
+  <div class="problem-box">
+    <strong>Problem (short)</strong>
+    <p>Hidden state \(s_t=(x_t,v_t)\), action \(a_t\in\{-1,+1\}\), dynamics</p>
+    <div class="equation">\[x_{t+1}=x_t+v_t,\qquad v_{t+1}=v_t+a_t.\]</div>
+    <p>Policy sees only \(o_t=x_t\). Minimize \(x_{t+2}^2+0.1v_{t+2}^2\).</p>
+    <ol type="a">
+      <li>Two histories / states: same \(o_t\), different optimal actions.</li>
+      <li>Prove no memoryless \(\pi(a_t\mid o_t)\) is always optimal.</li>
+      <li>Smallest sufficient policy input.</li>
+      <li>How treating \(o\) as \(s\) changes \(p(\tau)\).</li>
+    </ol>
+  </div>
+
+  <h2>Dialogue</h2>
+
+  <!-- TURN 0: tutor setup -->
+  <div class="turn tutor">
+    <div class="label">Tutor · setup</div>
+    <p>This problem shows why observations ≠ states. Same position, opposite velocities → same observation, but the best kick \(\pm 1\) can differ. We go one part at a time. Start with (a): find two hidden states with the same \(x\) and different optimal \(a\).</p>
+  </div>
+
+  <!-- TURN 1: student -->
+  <div class="turn you">
+    <div class="label">You</div>
+    <p>When I read the question, I get reminded that a policy maps a state to an action through params. Also the agent doesn’t have full visibility of state — it only observes \(x_t\). So now I have to show partial observability: if I can get two cases with the same \(x_t\) but different \(v\), then different states.</p>
+    <p>First consider \(x_0=0,\, v_0=1\) and \(x_0=0,\, v_0=-1\). We want to minimize the magnitudes of \(x\) and \(v\) so the whole cost stays small. For these values the optimal actions are going to be different.</p>
+  </div>
+
+  <!-- TURN 1: tutor reply -->
+  <div class="turn tutor">
+    <div class="label">Tutor <span class="verdict ok">direction right</span></div>
+    <p><strong>What’s correct</strong></p>
+    <ul>
+      <li>Policy acts on what it sees; here that’s only \(o_t=x_t\).</li>
+      <li>Same \(x\), different \(v\) ⇒ aliased observation. Good.</li>
+      <li>Pair \((0,+1)\) and \((0,-1)\) is the right counterexample shape.</li>
+    </ul>
+    <p><strong>Tighten</strong></p>
+    <ul>
+      <li>You’re showing this is <em>partially observable</em> (POMDP flavor): \(o\) alone is not enough for optimal control — not “proving partial MDP” as a name.</li>
+      <li>“Minimize mod \(x\) and \(v\)” is the spirit; the actual cost is \(x_{t+2}^2 + 0.1 v_{t+2}^2\). Check that number.</li>
+    </ul>
+    <p><strong>Concept reminder</strong></p>
+    <p>Two actions happen before the cost: \(a_t\) and \(a_{t+1}\). For “optimal \(a_t\)”, assume \(a_{t+1}\) is also chosen optimally.</p>
+    <div class="equation">\[
+      x_{t+2} = x_t + 2v_t + a_t
+    \]</div>
+    <div class="equation">\[
+      v_{t+2} = v_t + a_t + a_{t+1}
+    \]</div>
+    <p>\(x_{t+2}\) depends on \(a_t\) only; \(v_{t+2}\) depends on both.</p>
+  </div>
+
+  <!-- TURN 2: student question -->
+  <div class="turn you">
+    <div class="label">You</div>
+    <p>Why did we think that \(a_t\) and \(a_{t+1}\) both will be optimal?</p>
+  </div>
+
+  <!-- TURN 2: tutor reply -->
+  <div class="turn tutor">
+    <div class="label">Tutor <span class="verdict ok">good question</span></div>
+
+    <p><strong>Short answer:</strong> “Optimal action at time \(t\)” means: the action that leads to the best possible cost <em>if the rest of the plan is also played as well as possible</em>. That is the definition of an optimal action in sequential decision-making — not “\(a_t\) alone, with a random or fixed future.”</p>
+
+    <p><strong>Why both steps matter here</strong></p>
+    <p>The thing we minimize is only written at time \(t+2\):</p>
+    <div class="equation">\[
+      J = x_{t+2}^2 + 0.1\, v_{t+2}^2
+    \]</div>
+    <p>Getting to \((x_{t+2}, v_{t+2})\) takes <em>two</em> decisions: \(a_t\) then \(a_{t+1}\). So the true best first move is</p>
+    <div class="equation">\[
+      a_t^\star
+      = \arg\min_{a_t\in\{-1,+1\}}
+        \Big(
+          \min_{a_{t+1}\in\{-1,+1\}}
+          \big[ x_{t+2}(a_t)^2 + 0.1\, v_{t+2}(a_t,a_{t+1})^2 \big]
+        \Big).
+    \]</div>
+    <p>Inner min = “best second move given the first.” Outer min = “best first move assuming that.”</p>
+
+    <p><strong>What would go wrong if we didn’t?</strong></p>
+    <ul>
+      <li>If we fixed \(a_{t+1}\) somehow (say always \(+1\)), we might call a bad \(a_t\) “optimal” just because we crippled the future on purpose.</li>
+      <li>Part (a) asks for <em>optimal</em> actions under the true objective — i.e. an optimal controller that sees the full hidden state \((x,v)\).</li>
+      <li>Later, part (b) says: even that optimal full-state controller wants different \(a_t\) in two situations that look identical to a memoryless \(\pi(a\mid o)\). That’s the punchline.</li>
+    </ul>
+
+    <p><strong>Tiny analogy</strong></p>
+    <p>Chess: “Is this the best first move?” means “best if I also play the rest optimally,” not “best assuming I blunder on move 2.”</p>
+
+    <p><strong>What we are <em>not</em> assuming</strong></p>
+    <ul>
+      <li>We are not assuming the <em>observation-only</em> policy knows \(v\) or plans perfectly. That policy is what we’re attacking.</li>
+      <li>We temporarily pretend an oracle sees \((x,v)\) and picks the best two-step plan — only to show those oracles disagree across aliased states.</li>
+    </ul>
+  </div>
+
+  <!-- TURN 3: student -->
+  <div class="turn you">
+    <div class="label">You</div>
+    <p>Okay we need to minimize \((x_t + 2v_t + a_t)^2 + 0.1(v_t + a_t + a_{t+1})^2\).</p>
+    <p>So assume for same \(x_t\): if \(v_t &gt; 1\) then both \(a_t\) and \(a_{t+1}\) should be \(-1\); if \(v_t &lt; -1\) then both \(+1\); if \(-1 &lt; v_t &lt; 1\) then one \(+1\) and one \(-1\). So for same \(x_t\), different trajectories for the optimal action space. Is (a) solved?</p>
+  </div>
+
+  <!-- TURN 3: tutor reply -->
+  <div class="turn tutor">
+    <div class="label">Tutor <span class="verdict fix">almost — tighten</span></div>
+
+    <p><strong>Correct</strong></p>
+    <ul>
+      <li>Cost formula is exactly right.</li>
+      <li>Intuition “push velocity toward zero” is the right spirit.</li>
+      <li>Same \(x\), different \(v\) ⇒ possibly different optimal \(a_t\) — that’s the aliasing idea.</li>
+    </ul>
+
+    <p><strong>Where it drifts</strong></p>
+    <ul>
+      <li>Your three cases (\(v&gt;1\), \(v&lt;-1\), \(|v|&lt;1\)) are a bit hand-wavy. \(a_t\) also changes \(x_{t+2}=x+2v+a_t\), so “always both kicks the same way” is not automatically true for every \(x,v\).</li>
+      <li>Part (a) does <em>not</em> ask for a full policy for every \(v\). It asks for <strong>two concrete examples</strong> with the same \(o_t\) and different optimal \(a_t\).</li>
+      <li>For your pair \(v=\pm 1\), you may not need <em>both</em> actions equal. Often only \(a_t\) is forced; \(a_{t+1}\) can be free or opposite. That’s fine — part (a) cares about \(a_t\).</li>
+    </ul>
+
+    <p><strong>Concept reminder</strong></p>
+    <p>Don’t argue in generalities when two numbers settle it. Plug \(x=0\), \(v=+1\) into the cost for \(a_t=\pm 1\) (best \(a_{t+1}\) each time). Then \(v=-1\). If the winning \(a_t\) values are opposite, (a) is done.</p>
+
+    <p><strong>What “done” for (a) looks like</strong> (fill in the blanks yourself):</p>
+    <ul>
+      <li>History / state A: \(o_t = 0\), hidden \((0,+1)\), optimal \(a_t = \ldots\)</li>
+      <li>History / state B: \(o_t = 0\), hidden \((0,-1)\), optimal \(a_t = \ldots\)</li>
+      <li>Same observation, different optimal actions. ✓</li>
+    </ul>
+  </div>
+
+  <!-- TURN 4: student -->
+  <div class="turn you">
+    <div class="label">You</div>
+    <p>Optimal \(a_t\): for \((0,+1)\) → \(-1\); for \((0,-1)\) → \(+1\).</p>
+  </div>
+
+  <!-- TURN 4: tutor reply -->
+  <div class="turn tutor">
+    <div class="label">Tutor <span class="verdict ok">part (a) done</span></div>
+    <p>Yes. Quick sanity check of the numbers:</p>
+    <ul>
+      <li>\((0,+1)\), \(a_t=-1\): \(x_2=1\), \(v_2=a_{t+1}\in\{\pm 1\}\) → best \(J=1+0.1=1.1\)</li>
+      <li>\((0,+1)\), \(a_t=+1\): \(x_2=3\), best \(v_2=1\) → \(J=9.1\)</li>
+      <li>\((0,-1)\), \(a_t=+1\): \(x_2=-1\), best \(J=1.1\)</li>
+      <li>\((0,-1)\), \(a_t=-1\): \(x_2=-3\), best \(J=9.1\)</li>
+    </ul>
+    <p>So same \(o_t=0\), but optimal actions are opposite. That is part (a).</p>
+  </div>
+
+  <hr>
+  <h2>Part (b) — what you are really proving</h2>
+
+  <div class="turn tutor">
+    <div class="label">Tutor · explain part (b) (clear, not spoon-fed)</div>
+
+    <p><strong>Setup you already have</strong></p>
+    <p>From (a): there exist two hidden states that look identical to the agent (\(o_t=0\)) but disagree on which action is best. Call that disagreement “the policy’s dilemma.”</p>
+
+    <p><strong>What a memoryless policy even is</strong></p>
+    <p>A policy \(\pi(a_t\mid o_t)\) is allowed to look at <em>only</em> the current observation. It has no \(v\), no past \(o\)’s, no past \(a\)’s. So whenever \(o_t\) takes a particular value, \(\pi\) is locked into <em>one</em> behavioral rule for that value — the same rule every time that observation appears.</p>
+
+    <p><strong>What “optimal for every reachable hidden state” would require</strong></p>
+    <p>If such a \(\pi\) were truly optimal everywhere it can end up, then in <em>each</em> reachable hidden state it would have to choose (or put probability 1 on) an action that is optimal <em>for that hidden state</em>.</p>
+
+    <p><strong>Where the tension is</strong></p>
+    <p>Those two requirements pull against each other:</p>
+    <ul>
+      <li>Memoryless ⇒ “same \(o\) ⇒ same rule.”</li>
+      <li>Always-optimal ⇒ “different hidden needs ⇒ different rule.”</li>
+    </ul>
+    <p>Part (b) is just making that tension formal: show they cannot both be true, using your concrete pair from (a) as the witness.</p>
+
+    <p><strong>How proofs of this flavor usually feel</strong></p>
+    <p>You don’t invent new dynamics. You assume the strong claim (“there exists a memoryless \(\pi\) that is always optimal”), then ask what that \(\pi\) must do at the shared observation — and show that whatever it does, it betrays at least one of the two hidden states. That betrayal is the contradiction.</p>
+
+    <p><strong>Things you do <em>not</em> need</em></strong></p>
+    <ul>
+      <li>A formula for \(\pi\) for every \(o\).</li>
+      <li>Solving the whole POMDP.</li>
+      <li>Long algebra beyond (a).</li>
+    </ul>
+    <p>You need a clean logical sentence that connects: shared observation → forced shared behavior → cannot match both optimal actions.</p>
+
+    <p><strong>One concept from lecture to keep nearby</strong></p>
+    <p>Markov / sufficiency: if the input to \(\pi\) leaves out something the optimal action depends on (here, velocity), then no function of that input alone can track the optimal action in every situation. Part (b) is that sentence, specialized to this robot.</p>
+  </div>
+
+  <!-- TURN 5: you asked for the answer -->
+  <div class="turn you">
+    <div class="label">You</div>
+    <p>Give the answer for part (b).</p>
+  </div>
+
+  <div class="turn tutor">
+    <div class="label">Tutor <span class="verdict ok">part (b) answer</span></div>
+
+    <p><strong>Claim.</strong> No memoryless policy \(\pi(a_t\mid o_t)\) is optimal for every reachable hidden state.</p>
+
+    <p><strong>Proof (by contradiction).</strong></p>
+    <p>From (a), the reachable hidden states \(s^+=(0,+1)\) and \(s^-=(0,-1)\) share the same observation \(o_t=0\), but have different optimal actions:</p>
+    <div class="equation">\[
+      a^\star(s^+)=-1, \qquad a^\star(s^-)=+1.
+    \]</div>
+
+    <p>Assume, for contradiction, that some memoryless \(\pi(a\mid o)\) is optimal at every reachable hidden state. In particular it is optimal at both \(s^+\) and \(s^-\).</p>
+
+    <p>Because \(\pi\) is memoryless, its action distribution at these two states is the same object: \(\pi(\cdot\mid o=0)\).</p>
+
+    <p><em>Deterministic case.</em> If \(\pi\) picks a single action \(a_0\) at \(o=0\), then \(a_0\) cannot equal both \(-1\) and \(+1\). So \(a_0\) is suboptimal for at least one of \(s^+,s^-\), contradicting optimality everywhere.</p>
+
+    <p><em>Stochastic case.</em> If \(\pi(\cdot\mid 0)\) puts positive probability on both actions, then at \(s^+\) it takes the suboptimal action \(+1\) with positive probability (and symmetrically at \(s^-\) it takes \(-1\) with positive probability). An optimal policy for a given hidden state must put probability 1 on an optimal action for that state. Contradiction again.</p>
+
+    <p>Therefore no such memoryless \(\pi\) exists.</p>
+
+    <p><strong>One-line moral:</strong> same observation forces the same \(\pi\)-behavior; different hidden states need different optimal actions; those cannot both hold.</p>
+  </div>
+
+  <hr>
+  <h2>Part (c) — smallest sufficient input</h2>
+
+  <div class="turn tutor">
+    <div class="label">Tutor · explain part (c)</div>
+    <p><strong>Ask:</strong> give the smallest sufficient policy input — either an augmented observation, or a finite observation/action history — and justify why it is enough.</p>
+    <p><strong>What “sufficient” means:</strong> from that input, the agent can recover whatever the optimal action depends on (here: enough to know velocity, or equivalently the full hidden state up to what matters).</p>
+    <p><strong>What “smallest” means:</strong> don’t feed the whole past forever if a short window (or a simple augmentation) already recovers \(v\).</p>
+    <p><strong>Concept nudge (not the answer):</strong> dynamics say \(x_{t+1}=x_t+v_t\), so velocity is related to how position <em>changed</em>. Ask yourself: is one previous position enough? Do you also need the last action?</p>
+  </div>
+
+  <!-- TURN 6: student on part c -->
+  <div class="turn you">
+    <div class="label">You</div>
+    <p>I’m thinking the same example, but if \((o_t, a_t, o_{t+1})\) — that doesn’t look good enough to give an optimal state.</p>
+  </div>
+
+  <div class="turn tutor">
+    <div class="label">Tutor <span class="verdict fix">close — check the clock</span></div>
+
+    <p><strong>What’s right about your doubt</strong></p>
+    <p>If the policy must choose \(a_t\) <em>now</em>, it cannot take \(a_t\) or \(o_{t+1}\) as inputs. Those aren’t available yet when it decides. So as an input for time-\(t\) action selection, \((o_t,a_t,o_{t+1})\) is the wrong time stamp — your discomfort is justified.</p>
+
+    <p><strong>Concept reminder — sufficiency is about “what do I know when I act?”</strong></p>
+    <p>At the moment you pick \(a_t\), you already have:</p>
+    <ul>
+      <li>current observation \(o_t = x_t\)</li>
+      <li>whatever is in the <em>past</em>: previous observations and previous actions</li>
+    </ul>
+    <p>So a finite-history candidate should look like something ending at \(t\), e.g. involving \(o_{t-1}\), \(a_{t-1}\), \(o_t\) — not the future.</p>
+
+    <p><strong>Second concept — what are we trying to recover?</strong></p>
+    <p>Optimal \(a_t\) depends on the hidden state \((x_t, v_t)\). We already see \(x_t\). So the only missing piece is \(v_t\). Ask: which past bits let you reconstruct \(v_t\) from the dynamics?</p>
+    <div class="equation">\[
+      x_t = x_{t-1} + v_{t-1}
+      \quad\Rightarrow\quad
+      v_{t-1} = o_t - o_{t-1}
+    \]</div>
+    <div class="equation">\[
+      v_t = v_{t-1} + a_{t-1}
+    \]</div>
+    <p>Read those two lines and decide: do you need only two positions? Or also the last action?</p>
+
+    <p><strong>About your triple, shifted</strong></p>
+    <p>The same three symbols with the index moved to the past — information like “last obs, last action, current obs” — is a different candidate than “current obs, current action, next obs.” Don’t throw away the idea; fix the time index.</p>
+  </div>
+
+  <!-- TURN 7: student -->
+  <div class="turn you">
+    <div class="label">You</div>
+    <p>Sufficient input: \((o_{t-1},\, a_{t-1},\, o_t)\).</p>
+  </div>
+
+  <div class="turn tutor">
+    <div class="label">Tutor <span class="verdict ok">part (c) done</span></div>
+
+    <p><strong>Yes.</strong> At decision time \(t\), recover the hidden state as:</p>
+    <div class="equation">\[
+      x_t = o_t,
+      \qquad
+      v_{t-1} = o_t - o_{t-1},
+      \qquad
+      v_t = v_{t-1} + a_{t-1} = (o_t - o_{t-1}) + a_{t-1}.
+    \]</div>
+    <p>So \((x_t,v_t)\) is known ⇒ any optimal action that depends on the full state is representable as a function of \((o_{t-1},a_{t-1},o_t)\).</p>
+
+    <p><strong>Why this is (essentially) minimal as a history</strong></p>
+    <ul>
+      <li>Drop \(o_t\): you don’t even know current position.</li>
+      <li>Drop \(o_{t-1}\): you can’t form \(v_{t-1}=o_t-o_{t-1}\).</li>
+      <li>Drop \(a_{t-1}\): two positions give \(v_{t-1}\), not \(v_t\) (velocity already changed by the last action).</li>
+    </ul>
+
+    <p><strong>Equally valid “augmented observation” answer:</strong> let the sensor give \(\tilde{o}_t=(x_t,v_t)\) directly. That’s the full Markov state — also sufficient, and smaller as a vector (2 numbers). The history above is how you build an equivalent state when you only ever measure \(x\).</p>
+  </div>
+
+  <hr>
+  <h2>Part (d) — factorization of \(p(\tau)\)</h2>
+
+  <div class="turn tutor">
+    <div class="label">Tutor · explain part (d)</div>
+    <p><strong>Ask:</strong> explain why treating observations as states changes the factorization of the trajectory distribution.</p>
+
+    <p><strong>Recall the true (hidden-state) factorization</strong> from lecture:</p>
+    <div class="equation">\[
+      p(\tau)
+      = p(s_1)\prod_t \pi(a_t\mid s_t)\, p(s_{t+1}\mid s_t,a_t)
+    \]</div>
+    <p>with Markov dynamics in \(s\).</p>
+
+    <p><strong>What people sometimes write if they pretend \(o\) is \(s\):</strong></p>
+    <div class="equation">\[
+      p(\tau)
+      \stackrel{?}{=}
+      p(o_1)\prod_t \pi(a_t\mid o_t)\, p(o_{t+1}\mid o_t,a_t)
+    \]</div>
+
+    <p><strong>Your job:</strong> say what goes wrong with that second line in this problem (or in POMDPs generally). You don’t need a long derivation — name which factor is unjustified and why, using what we learned about \(v\) / history.</p>
+  </div>
+
+  <!-- TURN 8: student part d -->
+  <div class="turn you">
+    <div class="label">You</div>
+    <p>Both. They need one previous obs more to determine both policy and transition.</p>
+  </div>
+
+  <div class="turn tutor">
+    <div class="label">Tutor <span class="verdict ok">part (d) done</span> <span class="verdict fix">small tighten</span></div>
+
+    <p><strong>Correct call: both factors fail.</strong></p>
+
+    <p><strong>1. Policy factor \(\pi(a_t\mid o_t)\)</strong></p>
+    <p>From (a)–(b), optimal action is not a function of \(o_t\) alone. The true generative story for a competent agent is more like \(\pi(a_t\mid o_{t-1},a_{t-1},o_t)\) (or \(\pi(a_t\mid s_t)\) with \(s_t=(x_t,v_t)\)). Writing \(\prod \pi(a_t\mid o_t)\) pretends a memoryless observation-policy that we already proved cannot be optimal everywhere.</p>
+
+    <p><strong>2. Transition factor \(p(o_{t+1}\mid o_t,a_t)\)</strong></p>
+    <p>This is the Markov property claim for observations. It is false here. Next position is</p>
+    <div class="equation">\[
+      o_{t+1}=x_{t+1}=x_t+v_t=o_t+v_t,
+    \]</div>
+    <p>so you need \(v_t\), which is <em>not</em> determined by \((o_t,a_t)\) alone (same \(o_t\), opposite \(v_t\) ⇒ different \(o_{t+1}\); and \(a_t\) doesn’t even enter \(x_{t+1}\)). After marginalizing the hidden state, generally</p>
+    <div class="equation">\[
+      p(o_{t+1}\mid o_{1:t},a_{1:t})
+      \;\neq\;
+      p(o_{t+1}\mid o_t,a_t).
+    \]</div>
+
+    <p><strong>Tighten your “one previous obs” line</strong></p>
+    <p>From (c), one previous observation is <em>not</em> enough by itself. You need <strong>previous observation and previous action</strong>:</p>
+    <div class="equation">\[
+      v_t=(o_t-o_{t-1})+a_{t-1}.
+    \]</div>
+    <p>So the honest observation-trajectory factorization uses history (or an explicit latent \(s\)), not the MDP-style product in \(o\) alone.</p>
+
+    <p><strong>Clean (d) answer in one paragraph</strong></p>
+    <p>If observations are treated as states, people copy the MDP factorization \(p(o_1)\prod_t\pi(a_t\mid o_t)p(o_{t+1}\mid o_t,a_t)\). Both products are unjustified: the optimal (and even Markov-sufficient) policy depends on more than \(o_t\), and the observation process is not Markov in \((o_t,a_t)\) because velocity is latent. The correct latent-state factorization keeps \(p(s_{t+1}\mid s_t,a_t)\) and either conditions \(\pi\) on \(s_t\) or on a sufficient history of \((o,a)\).</p>
+  </div>
+
+  <div class="turn tutor">
+    <div class="label">Tutor · Problem 1 wrap</div>
+    <p>You now have the full arc:</p>
+    <ul>
+      <li><strong>(a)</strong> aliasing example: \((0,+1)\) vs \((0,-1)\)</li>
+      <li><strong>(b)</strong> memoryless \(\pi(a\mid o)\) impossible</li>
+      <li><strong>(c)</strong> sufficient input \((o_{t-1},a_{t-1},o_t)\) (or observe \(v\) directly)</li>
+      <li><strong>(d)</strong> naive \(p(\tau)\) in \(o\) breaks on both \(\pi\) and \(p(o'|o,a)\)</li>
+    </ul>
+    <p>That is exactly Lecture 1’s state-vs-observation story, in proof form.</p>
+  </div>
+
+  <div class="turn ask">
+    <div class="label">Next</div>
+    <p>Problem 2 whenever you want: trajectory likelihood &amp; the RL gradient (log-derivative trick).</p>
+  </div>
+
+  <hr>
+  <p class="meta">File: <code>Tutor-log/problem-1.html</code> · Problem 1 complete.</p>
+</body>
+</html>

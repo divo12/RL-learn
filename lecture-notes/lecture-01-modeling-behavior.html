@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CS224R Lecture 1 — Modeling Behavior &amp; RL Formulation</title>
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  <style>
+    :root { --ink:#18212b; --blue:#17365d; --accent:#3178c6; --soft:#f3f7fb; --gold:#e2a400; --green:#1f6b4a; }
+    * { box-sizing:border-box; }
+    body { max-width:960px; margin:38px auto; padding:0 24px 90px; font:17px/1.65 system-ui,sans-serif; color:var(--ink); }
+    h1,h2 { color:var(--blue); line-height:1.25; }
+    h3 { color:#245b8f; margin-top:28px; }
+    h4 { margin:18px 0 8px; color:#3a556e; }
+    nav { margin:28px 0 36px; line-height:2; }
+    nav a { margin-right:14px; white-space:nowrap; }
+    section { margin:40px 0; padding-top:8px; border-top:1px solid #e3eaf1; }
+    .note,.equation,.def,.takeaway,.qa { border-radius:6px; }
+    .note { padding:14px 17px; background:#fff8df; border-left:4px solid var(--gold); margin:16px 0; }
+    .takeaway { padding:14px 17px; background:#eef8f2; border-left:4px solid var(--green); margin:16px 0; }
+    .def { padding:14px 17px; background:var(--soft); border-left:4px solid var(--accent); margin:14px 0; }
+    .equation { padding:12px 16px; margin:14px 0; background:var(--soft); border-left:4px solid var(--accent); overflow-x:auto; }
+    .qa { padding:14px 17px; margin:14px 0; border:1px solid #d8e1ea; background:#fff; }
+    .qa strong { color:var(--blue); }
+    .tag { display:inline-block; padding:2px 8px; margin-left:6px; border-radius:999px; background:#e8f1fb; color:#234d78; font-size:13px; vertical-align:middle; }
+    table { border-collapse:collapse; width:100%; margin:14px 0; }
+    th,td { border:1px solid #d8e1ea; padding:9px 11px; text-align:left; vertical-align:top; }
+    th { background:var(--soft); }
+    li { margin:8px 0; }
+    code { background:#eef1f4; padding:2px 5px; border-radius:4px; font-size:0.92em; }
+    a { color:#1769aa; }
+    .toc li { margin:4px 0; }
+    ul.compact li { margin:4px 0; }
+    .meta { color:#5a6b7c; font-size:15px; }
+  </style>
+</head>
+<body>
+  <h1>Lecture 1 — Modeling Behavior &amp; Formulating RL</h1>
+  <p class="meta">
+    CS224R Deep Reinforcement Learning · Instructor: Chelsea Finn · Stanford<br>
+    Slides: <a href="https://cs224r.stanford.edu/slides/01_cs224r_intro_2026.pdf">01_cs224r_intro_2026.pdf</a>
+    · Practice: <a href="../cs224r-study-pack.html#lecture-1">study pack L1</a>
+    · Code: <a href="../practice_templates/mdp_practice.py"><code>mdp_practice.py</code></a>
+  </p>
+
+  <div class="takeaway">
+    <strong>One-line lecture thesis:</strong>
+    Deep RL learns a policy \(\pi(a\mid s)\) from experience (often on-policy, non-i.i.d.) to maximize expected cumulative reward in sequential decision problems — unlike supervised learning’s i.i.d.\ labeled \((x,y)\) pairs.
+  </div>
+
+  <nav>
+    <a href="#goals">Goals</a>
+    <a href="#why">Why DRL</a>
+    <a href="#sl-vs-rl">SL vs RL</a>
+    <a href="#data">Experience as data</a>
+    <a href="#markov">Markov / POMDP</a>
+    <a href="#examples">Examples</a>
+    <a href="#policy">Policies</a>
+    <a href="#objective">Objective</a>
+    <a href="#value">Values</a>
+    <a href="#algos">Algorithm families</a>
+    <a href="#glossary">Glossary</a>
+    <a href="#qa">Q&amp;A from lecture</a>
+    <a href="#checklist">Revision checklist</a>
+  </nav>
+
+  <!-- ========== GOALS ========== -->
+  <section id="goals">
+    <h2>1. Course &amp; lecture goals</h2>
+    <p><strong>What “deep reinforcement learning” means here</strong></p>
+    <ul>
+      <li><strong>Reinforcement learning</strong> = sequential decision-making: observe → act → observe → act…</li>
+      <li>Topics in scope: imitation learning; model-free &amp; model-based RL; offline &amp; online RL; multi-task &amp; meta-RL; RL for LLMs; RL for robots.</li>
+      <li><strong>Deep</strong> = solutions that scale to deep neural nets (less time on non-deep classical methods).</li>
+    </ul>
+    <p><strong>Learning goals for today</strong></p>
+    <ol>
+      <li>What is deep RL?</li>
+      <li>How do we <em>represent</em> behavior so we can optimize it?</li>
+      <li>How do we <em>formulate</em> an RL problem (MDP / POMDP)?</li>
+    </ol>
+    <p><strong>Course pedagogy</strong></p>
+    <ul class="compact">
+      <li>Focus on core concepts so advanced methods become readable later.</li>
+      <li>Emphasize implementing algorithms yourself.</li>
+      <li>Examples in robotics, control, and language models; techniques generalize.</li>
+      <li>More theory / other apps → CS234 is a good complement.</li>
+      <li>End goal: understand and implement existing <em>and</em> emerging deep RL methods.</li>
+    </ul>
+  </section>
+
+  <!-- ========== WHY ========== -->
+  <section id="why">
+    <h2>2. Why study deep RL?</h2>
+    <ol>
+      <li><strong>Beyond supervised examples.</strong> Predictions have consequences (recommenders, chatbots, control). RL is the framework for optimizing behavior under those consequences.</li>
+      <li><strong>Indirect / non-differentiable supervision.</strong> “Thumbs up,” sparse task success, coding-assistant quality — not a labeled output \(y\). Any scalar objective can be cast as RL.</li>
+      <li><strong>Deployed in performant systems.</strong> Legged robots, manipulation (laundry, origami), Go (AlphaGo / Move 37), LM post-training &amp; reasoning, traffic control, generative-model alignment, chip design (e.g. Google TPU placement), etc.</li>
+      <li><strong>Learning from experience ≈ fundamental to intelligence.</strong> Improve with practice; discover strategies not in the demo data (not just mimicry).</li>
+      <li><strong>Open research problems.</strong> Reward learning, generalization, scale + transfer, long-horizon tasks, fully autonomous practice / reset-free RL.</li>
+    </ol>
+    <div class="note">
+      <strong>Sparse reward practical point (from Q&amp;A):</strong>
+      If reward is \(1\) only when the towel is hung and \(0\) otherwise, naive exploration may never succeed. Often you need demos / BC init to jump-start exploration under sparse rewards.
+    </div>
+  </section>
+
+  <!-- ========== SL VS RL ========== -->
+  <section id="sl-vs-rl">
+    <h2>3. Supervised learning vs reinforcement learning</h2>
+    <table>
+      <thead>
+        <tr><th></th><th>Supervised learning</th><th>Reinforcement learning</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Objects</td>
+          <td>Input–output pairs \((x, y)\)</td>
+          <td>States/observations → actions via policy \(\pi\)</td>
+        </tr>
+        <tr>
+          <td>Supervision</td>
+          <td>Direct label: “output this \(y\)”</td>
+          <td>Indirect: reward / preference / success from experience</td>
+        </tr>
+        <tr>
+          <td>Data</td>
+          <td>Assumed i.i.d.\ from a fixed distribution</td>
+          <td><strong>Not</strong> i.i.d.; distribution depends on the policy being learned</td>
+        </tr>
+        <tr>
+          <td>Dataset shape</td>
+          <td>Many \((x,y)\)</td>
+          <td>Trajectories (rollouts / episodes), often with rewards</td>
+        </tr>
+        <tr>
+          <td>Goal</td>
+          <td>Predict \(y\) given \(x\)</td>
+          <td>Learn behavior \(\pi(a\mid s)\) that maximizes expected return</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="takeaway">
+      The two big differences to remember on every exam / interview:
+      (1) no direct answer labels — only experience + reward;
+      (2) data distribution depends on \(\pi\) (closed loop).
+    </div>
+  </section>
+
+  <!-- ========== EXPERIENCE AS DATA ========== -->
+  <section id="data">
+    <h2>4. Representing experience as data</h2>
+
+    <div class="def">
+      <strong>State \(s\)</strong> — full relevant configuration of the world for decision-making
+      (e.g. arm pose + towel pose + hook pose; or image + joint angles if that is treated as sufficient).
+    </div>
+    <div class="def">
+      <strong>Observation \(o\)</strong> — what the agent actually receives; may be incomplete.
+      Past observations may be needed (chatbot last message alone ≠ full conversation state).
+    </div>
+    <div class="def">
+      <strong>Action \(a\)</strong> — the decision / control the agent applies.
+    </div>
+    <div class="def">
+      <strong>Trajectory \(\tau\)</strong> — sequence of states (or observations) and actions:
+      \(\tau = (s_1,a_1,s_2,a_2,\ldots,s_T,a_T)\) (or with \(o_t\)).
+      May be augmented with rewards \(r_t\).
+    </div>
+    <div class="def">
+      <strong>Reward function \(r(s,a)\)</strong> (often \(r(s)\) only) — how good is this state/action.
+      Examples: towel hung?; user thumbs up/down; distance to goal (negative distance).
+    </div>
+
+    <h3>State vs observation (core distinction)</h3>
+    <ul>
+      <li><strong>States:</strong> Markov — next state depends only on current state + action.</li>
+      <li><strong>Observations:</strong> may be partial; future observations generally depend on history, not just last \(o\) and \(a\).</li>
+      <li>Practical fix for POMDPs: feed a short history (or a recurrent/sequence model) and treat that as an approximate state.</li>
+    </ul>
+  </section>
+
+  <!-- ========== MARKOV ========== -->
+  <section id="markov">
+    <h2>5. Dynamics, Markov property, MDP / POMDP</h2>
+
+    <p>Interaction as a chain:</p>
+    <div class="equation">\[
+      s_1 \xrightarrow{a_1} s_2 \xrightarrow{a_2} s_3 \xrightarrow{a_3} \cdots
+    \]</div>
+
+    <div class="def">
+      <strong>Dynamics / transition model</strong>
+      \[
+        p(s_{t+1}\mid s_t, a_t)
+      \]
+      How the world evolves given current state and action (arm motion, towel motion, other agents, etc.).
+      Usually <em>unknown</em>.
+    </div>
+
+    <div class="def">
+      <strong>Markov property</strong>
+      \[
+        s_{t+1}\;\perp\; s_{1:t-1} \mid (s_t, a_t)
+      \]
+      Equivalently: \(p(s_{t+1}\mid s_{1:t}, a_{1:t}) = p(s_{t+1}\mid s_t, a_t)\).
+      Lets algorithms factor problems without conditioning on the entire past.
+    </div>
+
+    <p>With observations only, \(o_{t+1}\) is generally <em>not</em> independent of past \(o\)’s given only \(o_t,a_t\), because \(o\) may omit velocity, contact history, conversation context, etc.</p>
+
+    <div class="def">
+      <strong>Markov Decision Process (MDP)</strong> — when the agent sees states.<br>
+      Ingredients (introduced by name at end of lecture):
+      states, actions, reward, initial-state distribution \(p(s_1)\), dynamics \(p(s'\mid s,a)\).
+    </div>
+    <div class="def">
+      <strong>Partially Observable MDP (POMDP)</strong> — agent sees observations \(o\) of latent states.
+    </div>
+
+    <h3>Why \(r(s,a)\) and not only \(r(s)\)?</h3>
+    <p>Often reward depends only on state (progress, success). Action dependence appears when you penalize effort/energy (e.g. large motor torques while walking).</p>
+  </section>
+
+  <!-- ========== EXAMPLES ========== -->
+  <section id="examples">
+    <h2>6. Concrete formulations</h2>
+
+    <h3>Robot hanging a towel</h3>
+    <table>
+      <tr><th>Component</th><th>Example</th></tr>
+      <tr><td>State</td><td>RGB image(s) + joint positions + joint velocities (common robotics stack; modalities may need different network heads)</td></tr>
+      <tr><td>Action</td><td>Commanded next joint positions (e.g. 90° → 92°)</td></tr>
+      <tr><td>Trajectory</td><td>Sequence of images (video) + joint states + commands</td></tr>
+      <tr><td>Time</td><td>Usually discretized, e.g. 20&nbsp;Hz (20 decisions / second)</td></tr>
+      <tr><td>Reward</td><td>\(1\) if towel on hook else \(0\); optional torque penalties</td></tr>
+    </table>
+
+    <h3>Chatbot</h3>
+    <table>
+      <tr><th>Component</th><th>Example</th></tr>
+      <tr><td>Observation</td><td>User’s most recent message (compact “state” usually unavailable)</td></tr>
+      <tr><td>Action</td><td>Chatbot’s next reply (sentence / paragraph / long text)</td></tr>
+      <tr><td>Trajectory</td><td>Conversation trace (variable timing — not fixed Hertz)</td></tr>
+      <tr><td>Reward</td><td>\(+1\) upvote, \(-10\) downvote, \(0\) no feedback (example)</td></tr>
+    </table>
+
+    <h3>Self-check exercise from lecture</h3>
+    <p>Pick a domain (self-driving, web agent, game, …) and write:</p>
+    <ul class="compact">
+      <li>state <em>or</em> observation,</li>
+      <li>action,</li>
+      <li>trajectory,</li>
+      <li>reward.</li>
+    </ul>
+    <p class="meta">Driving example from class: LiDAR/image alone may miss velocities → observation; a few seconds of history can approximate a state.</p>
+  </section>
+
+  <!-- ========== POLICY ========== -->
+  <section id="policy">
+    <h2>7. Representing behavior: the policy</h2>
+
+    <div class="def">
+      <strong>Policy \(\pi_\theta\)</strong> — maps states/observations (or histories) to actions.
+      \(\theta\) = parameters (NN weights). Architecture: MLP, CNN, Transformer, linear model, generative model over actions, …
+    </div>
+
+    <p><strong>Acting / rollout loop</strong></p>
+    <ol>
+      <li>Observe \(s_t\) (or history of \(o\)’s).</li>
+      <li>Sample \(a_t \sim \pi_\theta(\cdot\mid s_t)\) (forward pass).</li>
+      <li>Execute in environment; receive \(s_{t+1}\) (and \(r_t\)).</li>
+      <li>Repeat → one <strong>rollout</strong> / <strong>episode</strong> = one trajectory generated by \(\pi\).</li>
+    </ol>
+
+    <h3>Memory</h3>
+    <ul>
+      <li>True state input → no history required (Markov).</li>
+      <li>Observations only → give the policy memory (history / RNN / Transformer). Cost: more compute &amp; memory.</li>
+      <li>Optional two-stage: infer latent state, then act from that state.</li>
+    </ul>
+
+    <h3>Why stochastic policies?</h3>
+    <ol>
+      <li><strong>Exploration:</strong> try different strategies while learning (tennis practice analogy).</li>
+      <li><strong>Modeling multimodal human/demo data:</strong> people take different valid actions; generative policies help.</li>
+    </ol>
+  </section>
+
+  <!-- ========== OBJECTIVE ========== -->
+  <section id="objective">
+    <h2>8. The RL objective</h2>
+
+    <p>Goal: maximize reward over the whole trajectory, not one step.</p>
+    <div class="equation">\[
+      R(\tau)=\sum_{t=1}^{T} r(s_t,a_t)
+    \]</div>
+
+    <h3>Why is return not deterministic?</h3>
+    <p>Two primary sources of randomness (lecture emphasis):</p>
+    <ol>
+      <li><strong>Stochastic dynamics</strong> \(p(s_{t+1}\mid s_t,a_t)\).</li>
+      <li><strong>Stochastic policy</strong> \(\pi(a_t\mid s_t)\).</li>
+    </ol>
+    <p>Also: random initial state \(p(s_1)\). Stochastic rewards / nonstationary goals can usually be pushed into the state without loss of generality; lecture typically keeps \(r\) deterministic.</p>
+
+    <h3>Trajectory distribution</h3>
+    <div class="equation">\[
+      p_\theta(\tau)
+      = p(s_1)\prod_{t=1}^{T}
+        \pi_\theta(a_t\mid s_t)\,
+        p(s_{t+1}\mid s_t,a_t)
+    \]</div>
+    <p>\(T\) need not be fixed (variable horizon / conversation length); fixed \(T\) is just easier to write.</p>
+
+    <h3>Expected return (the thing we maximize)</h3>
+    <div class="equation">\[
+      J(\theta)
+      =\mathbb{E}_{\tau\sim p_\theta}\big[R(\tau)\big]
+      =\mathbb{E}_{\tau\sim p_\theta}\Big[\sum_{t=1}^{T} r(s_t,a_t)\Big]
+    \]</div>
+    <div class="equation">\[
+      \theta^\star \in \arg\max_\theta\, J(\theta)
+    \]</div>
+
+    <div class="note">
+      \(\pi\) does not appear “inside” \(R(\tau)\) as a free symbol — it shapes the <em>distribution</em> \(p_\theta(\tau)\) over which we take the expectation.
+      Much of the course is how to optimize \(J\) despite that.
+    </div>
+
+    <h3>Discounted return</h3>
+    <p>Equal weight on all times may be undesirable (care more about now than 1000 years out). Discount \(\gamma\in(0,1]\):</p>
+    <div class="equation">\[
+      R_\gamma(\tau)=\sum_{t=1}^{T}\gamma^{t-1}\, r(s_t,a_t)
+      \quad\text{(indexing conventions vary; idea is \(\gamma^t\) decay)}
+    \]</div>
+    <ul class="compact">
+      <li>\(\gamma=1\): undiscounted sum.</li>
+      <li>Smaller \(\gamma\): greedier / more myopic.</li>
+    </ul>
+    <p class="meta">Discount factors return in later lectures; memorize the role now.</p>
+  </section>
+
+  <!-- ========== VALUE ========== -->
+  <section id="value">
+    <h2>9. How good is a policy? Value &amp; Q</h2>
+    <p>Introduced lightly — used heavily from next week onward.</p>
+
+    <div class="def">
+      <strong>State value \(V^\pi(s)\)</strong> — expected future return if you <em>start in</em> \(s\) and follow \(\pi\) thereafter.
+      \[
+        V^\pi(s)
+        =\mathbb{E}_{\tau\sim p_\theta}\Big[\sum_{t=0}^{T-1}\gamma^t r(s_t,a_t)\ \Big|\ s_0=s\Big]
+      \]
+      (exact horizon / indexing as in slides; conceptual definition matters today.)
+    </div>
+
+    <div class="def">
+      <strong>Action value \(Q^\pi(s,a)\)</strong> — expected future return if you start in \(s\), take action \(a\) (possibly ≠ \(\pi\)), then follow \(\pi\).
+    </div>
+
+    <p>If you cannot score policies, you cannot systematically improve them — values are the scoring tools.</p>
+  </section>
+
+  <!-- ========== ALGORITHMS ========== -->
+  <section id="algos">
+    <h2>10. Algorithm families (roadmap)</h2>
+    <table>
+      <thead>
+        <tr><th>Family</th><th>Idea</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Imitation learning</td><td>Mimic a high-reward (or expert) policy from demos</td></tr>
+        <tr><td>Policy gradients</td><td>Differentiate \(J\) / learn from on-policy practice</td></tr>
+        <tr><td>Actor–critic</td><td>Estimate value of current \(\pi\); use it to improve \(\pi\)</td></tr>
+        <tr><td>Value-based</td><td>Estimate value of optimal policy; read off a good policy</td></tr>
+        <tr><td>Model-based</td><td>Learn dynamics \(p(s'\mid s,a)\); plan or improve \(\pi\) with the model</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Why so many algorithms? (vs “just SGD” in SL)</h3>
+    <ul>
+      <li>Cost of collecting data (sim vs humans vs robots).</li>
+      <li>What supervision exists (demos, dense rewards, preferences).</li>
+      <li>Stability &amp; ease of tuning vs sample efficiency.</li>
+      <li>Action space: discrete vs continuous, dimensionality.</li>
+      <li>Whether dynamics are easy to learn.</li>
+    </ul>
+    Different methods make different trade-offs under different assumptions.
+  </section>
+
+  <!-- ========== GLOSSARY ========== -->
+  <section id="glossary">
+    <h2>11. Notation cheat sheet</h2>
+    <table>
+      <tr><th>Symbol / term</th><th>Meaning</th></tr>
+      <tr><td>\(s\), \(o\), \(a\)</td><td>state, observation, action</td></tr>
+      <tr><td>\(r(s,a)\)</td><td>reward</td></tr>
+      <tr><td>\(p(s_1)\)</td><td>initial-state distribution</td></tr>
+      <tr><td>\(p(s'\mid s,a)\)</td><td>dynamics / transition kernel</td></tr>
+      <tr><td>\(\tau\)</td><td>trajectory</td></tr>
+      <tr><td>\(t\), \(T\)</td><td>time index; horizon / terminal time (variable OK)</td></tr>
+      <tr><td>\(\pi_\theta\)</td><td>policy with parameters \(\theta\)</td></tr>
+      <tr><td>rollout / episode</td><td>one trajectory from running \(\pi\)</td></tr>
+      <tr><td>\(p_\theta(\tau)\)</td><td>trajectory distribution induced by \(\pi_\theta\) + env</td></tr>
+      <tr><td>\(J(\theta)\)</td><td>expected return objective</td></tr>
+      <tr><td>\(\gamma\)</td><td>discount factor</td></tr>
+      <tr><td>\(V^\pi\), \(Q^\pi\)</td><td>state-value and action-value functions</td></tr>
+      <tr><td>MDP / POMDP</td><td>fully / partially observable sequential decision process</td></tr>
+    </table>
+  </section>
+
+  <!-- ========== Q&A ========== -->
+  <section id="qa">
+    <h2>12. Lecture Q&amp;A distilled</h2>
+
+    <div class="qa">
+      <strong>Q. Real-world reward for block insertion?</strong><br>
+      Often shaped as negative distance between object and goal; sometimes proprioception or mocap provides positions. Hard in general → <em>reward learning</em> is a real research need.
+    </div>
+    <div class="qa">
+      <strong>Q. How much observation history to recover state?</strong><br>
+      Heavily domain-dependent. Many robotics stacks use current sensors; tactile alone is highly partial; vision helps. Sequence models / short windows are common.
+    </div>
+    <div class="qa">
+      <strong>Q. Why isn’t future \(o\) independent of past \(o\)’s?</strong><br>
+      Observations omit parts of state (e.g. intermittent contact). Older observations can carry information the latest \(o\) lost. Graphically: marginalizing latent states couples the \(o\)’s.
+    </div>
+    <div class="qa">
+      <strong>Q. Sparse \(0/1\) success — how does learning start?</strong><br>
+      Demo initialization / exploration jump-start; otherwise reward may stay zero forever.
+    </div>
+    <div class="qa">
+      <strong>Q. Always call everything an observation because sensors are noisy?</strong><br>
+      You can, but long histories are expensive. Often approximate as a state even if rare sensor failures exist, for algorithmic convenience.
+    </div>
+    <div class="qa">
+      <strong>Q. Condition on both \(s\) and \(o\)?</strong><br>
+      If \(s\) is truly complete, \(o\) adds nothing. History helps for observations, not for true states.
+    </div>
+    <div class="qa">
+      <strong>Q. Stochastic rewards / changing goals?</strong><br>
+      Often re-modeled as part of state or as a new decision process; keep \(r\) deterministic when possible.
+    </div>
+  </section>
+
+  <!-- ========== CHECKLIST ========== -->
+  <section id="checklist">
+    <h2>13. Revision checklist (can you explain without notes?)</h2>
+    <ul>
+      <li>□ SL vs RL: labels, i.i.d., closed-loop data dependence.</li>
+      <li>□ Define \(s\), \(o\), \(a\), \(\tau\), \(r\), \(\pi_\theta\), rollout.</li>
+      <li>□ State Markov property; say what breaks under partial observability.</li>
+      <li>□ Write \(p_\theta(\tau)\) factorization; circle which terms involve \(\theta\).</li>
+      <li>□ Write \(J(\theta)=\mathbb{E}_{\tau\sim p_\theta}[R(\tau)]\); say why \(\pi\) enters via \(p_\theta\).</li>
+      <li>□ Name the two main stochasticity sources in return.</li>
+      <li>□ Role of \(\gamma\); what \(\gamma\to 0\) vs \(\gamma=1\) means.</li>
+      <li>□ Intuition for \(V^\pi(s)\) and \(Q^\pi(s,a)\).</li>
+      <li>□ One sentence each for imitation, PG, actor–critic, value-based, model-based.</li>
+      <li>□ Formulate state/obs, action, trajectory, reward for a domain of your choice.</li>
+    </ul>
+
+    <div class="takeaway">
+      <strong>Next lecture:</strong> imitation learning — mimic high-reward behavior from demonstrations
+      (then policy gradients: differentiate this objective from experience).
+    </div>
+  </section>
+
+  <p class="meta" style="margin-top:48px;">
+    Notes distilled from Lecture 1 transcript for personal revision.
+    Pair with <a href="../cs224r-study-pack.html#lecture-1">written mastery problems</a>
+    and <code>practice_templates/mdp_practice.py</code>.
+  </p>
+</body>
+</html>

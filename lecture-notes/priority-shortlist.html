@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CS224R — Priority problem shortlist</title>
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  <style>
+    :root { --ink:#1a2330; --blue:#17365d; --soft:#f3f7fb; --ok:#eef8f2; --miss:#f7f8fa; --line:#d8e1ea; --accent:#3178c6; --gold:#fff8df; }
+    * { box-sizing:border-box; }
+    body { max-width:900px; margin:36px auto; padding:0 22px 80px; font:17px/1.65 system-ui,sans-serif; color:var(--ink); }
+    h1,h2 { color:var(--blue); line-height:1.25; }
+    h3 { color:#245b8f; }
+    .meta { color:#5a6b7c; font-size:14px; }
+    table { border-collapse:collapse; width:100%; margin:14px 0; font-size:15px; }
+    th,td { border:1px solid var(--line); padding:9px 11px; text-align:left; vertical-align:top; }
+    th { background:var(--soft); }
+    .done { background:var(--ok); }
+    .todo { background:#fff; }
+    .later { background:var(--miss); color:#5a6b7c; }
+    .box { padding:14px 16px; border-radius:6px; margin:16px 0; }
+    .plan { background:var(--gold); border-left:4px solid #e2a400; }
+    .note { background:var(--soft); border-left:4px solid var(--accent); }
+    ol.order li { margin:8px 0; }
+    a { color:#1769aa; }
+    code { background:#eef1f4; padding:2px 5px; border-radius:4px; }
+  </style>
+</head>
+<body>
+  <h1>Priority shortlist — max coverage, limited time</h1>
+  <p class="meta">
+    Study pack: <a href="../cs224r-study-pack.html">cs224r-study-pack.html</a>
+    · Tutor log P1: <a href="../Tutor-log/problem-1.html">Tutor-log/problem-1.html</a>
+  </p>
+
+  <div class="box plan">
+    <strong>Do these 6 (+ #1 already done) = 7 total</strong>
+    <ol class="order">
+      <li><strong>#1</strong> Observation aliasing — <em>done</em></li>
+      <li><strong>#2</strong> Trajectory likelihood &amp; RL gradient</li>
+      <li><strong>#3</strong> Exact policy evaluation (\(V/Q/A\))</li>
+      <li><strong>#7</strong> Flow matching (train pair → Euler)</li>
+      <li><strong>#9</strong> Compounding error &amp; DAgger</li>
+      <li><strong>#19</strong> MC / TD / \(n\)-step targets</li>
+      <li><strong>#22</strong> PPO clipping (chosen over #16)</li>
+    </ol>
+    <p style="margin-bottom:0"><strong>Order:</strong> 2 → 3 → 7 → 9 → 19 → 22 → then skim #24 as self-check.</p>
+  </div>
+
+  <div class="box note">
+    <strong>Why #22 over #16?</strong>
+    Both are trust-region ideas. <strong>#22 (PPO clip)</strong> is what you actually implement and debug in modern deep RL; part (d) still forces you to compare clipping vs an explicit KL budget (the heart of #16). #16 is better theory of “reuse one batch under KL”; defer it unless you want TRPO-style depth.
+  </div>
+
+  <h2>What each pick buys</h2>
+  <table>
+    <tr><th>#</th><th>Lecture</th><th>Core idea locked in</th><th>Makes these easier later</th></tr>
+    <tr class="done"><td>1</td><td>L1</td><td>POMDP / memory / \(p(\tau)\) in \(o\) vs \(s\)</td><td>4, 24 (obs design)</td></tr>
+    <tr class="todo"><td>2</td><td>L1→L3</td><td>Log-derivative, \(\nabla J\), dynamics drop out</td><td>11, 12, 17</td></tr>
+    <tr class="todo"><td>3</td><td>L1→L4</td><td>Exact \(P_\pi,r_\pi,V^\pi,Q^\pi,A^\pi\)</td><td>18, code <code>mdp_practice</code></td></tr>
+    <tr class="todo"><td>7</td><td>L2</td><td>Flow path, velocity target, Euler sampling</td><td>5–6, 8 (partial), <code>imitation_practice</code></td></tr>
+    <tr class="todo"><td>9</td><td>L2</td><td>\(O(T^2\epsilon)\), covariate shift, DAgger loop</td><td>10, 24</td></tr>
+    <tr class="todo"><td>19</td><td>L4</td><td>MC vs TD vs \(n\)-step bias/variance</td><td>18, 20, 21, GAE intuition</td></tr>
+    <tr class="todo"><td>22</td><td>L3/L4</td><td>PPO surrogate, clip regions, ±A asymmetry</td><td>16 (skim), 17, on-policy fine-tune in 24</td></tr>
+  </table>
+
+  <h2>Coverage by lecture</h2>
+  <table>
+    <tr><th>Lecture</th><th>Covered well</th><th>Thin / deferred</th></tr>
+    <tr>
+      <td><strong>L1</strong> Modeling &amp; MDPs</td>
+      <td>State vs obs (#1), trajectory likelihood &amp; gradient (#2), exact evaluation (#3)</td>
+      <td>#4 algorithm-selection (skim when doing #24)</td>
+    </tr>
+    <tr>
+      <td><strong>L2</strong> Imitation / flow / DAgger</td>
+      <td>Flow matching (#7), compounding + DAgger (#9)</td>
+      <td>#5 unimodal MSE (read once), #6 audit, #8 chunking details, #10 ambiguous experts</td>
+    </tr>
+    <tr>
+      <td><strong>L3</strong> Policy gradients</td>
+      <td>Gradient derivation via #2; stable updates via PPO (#22)</td>
+      <td>#12 reward-to-go, #13 baselines, #14 softmax numerics, #15 IS, #16 KL (idea touched in #22d), #17 debug</td>
+    </tr>
+    <tr>
+      <td><strong>L4</strong> Actor–critic</td>
+      <td>Value targets (#19); clipped policy objective (#22)</td>
+      <td>#18 TD=advantage identities, #20 semi-gradient, #21 full AC batch, #23 replay repair</td>
+    </tr>
+  </table>
+
+  <h2>Full problem map (24)</h2>
+  <table>
+    <tr><th>#</th><th>Status</th><th>#</th><th>Status</th><th>#</th><th>Status</th></tr>
+    <tr>
+      <td class="done">1 aliasing</td><td class="done">done</td>
+      <td class="todo">2 gradient</td><td class="todo">do</td>
+      <td class="todo">3 eval \(VQA\)</td><td class="todo">do</td>
+    </tr>
+    <tr>
+      <td class="later">4 formulate</td><td class="later">later</td>
+      <td class="later">5 unimodal</td><td class="later">later</td>
+      <td class="later">6 expressivity</td><td class="later">later</td>
+    </tr>
+    <tr>
+      <td class="todo">7 flow</td><td class="todo">do</td>
+      <td class="later">8 chunks</td><td class="later">later</td>
+      <td class="todo">9 DAgger</td><td class="todo">do</td>
+    </tr>
+    <tr>
+      <td class="later">10 ambiguous</td><td class="later">later</td>
+      <td class="later">11 REINFORCE</td><td class="later">easy after 2</td>
+      <td class="later">12 reward-to-go</td><td class="later">later</td>
+    </tr>
+    <tr>
+      <td class="later">13 baselines</td><td class="later">later</td>
+      <td class="later">14 softmax PG</td><td class="later">later</td>
+      <td class="later">15 IS</td><td class="later">later</td>
+    </tr>
+    <tr>
+      <td class="later">16 KL reuse</td><td class="later">later (idea in 22)</td>
+      <td class="later">17 debug PG</td><td class="later">later</td>
+      <td class="later">18 TD/adv</td><td class="later">later (uses 3)</td>
+    </tr>
+    <tr>
+      <td class="todo">19 MC/TD/n</td><td class="todo">do</td>
+      <td class="later">20 critic graph</td><td class="later">later</td>
+      <td class="later">21 AC batch</td><td class="later">later</td>
+    </tr>
+    <tr>
+      <td class="todo">22 PPO clip</td><td class="todo">do</td>
+      <td class="later">23 replay AC</td><td class="later">later</td>
+      <td class="later">24 capstone</td><td class="later">self-check after</td>
+    </tr>
+  </table>
+
+  <h2>Honest “entirety” score</h2>
+  <table>
+    <tr><th>Lecture</th><th>Approx. coverage with this shortlist</th></tr>
+    <tr><td>L1</td><td>~85% (missing only soft #4)</td></tr>
+    <tr><td>L2</td><td>~60% (flow + DAgger yes; chunking / GMM audit thin)</td></tr>
+    <tr><td>L3</td><td>~45% (derivation + PPO yes; IS / baselines / reward-to-go deferred)</td></tr>
+    <tr><td>L4</td><td>~40% (targets + clip yes; full AC / replay deferred)</td></tr>
+  </table>
+  <p>This is the best <em>time-boxed</em> cut that still touches every lecture’s named themes (MDP math, flow, DAgger, values, PPO). It is not a substitute for the full set.</p>
+
+  <p class="meta">When ready, start #2 in a new tutor log the same way as Problem 1.</p>
+</body>
+</html>
