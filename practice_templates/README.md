@@ -32,5 +32,4 @@ Run everything:
 
     python -m unittest discover -s practice_templates/tests -v
 
-Use the same Python/PyTorch environment as the course starter repositories.
-Do not copy these implementations into graded homework.
+Needs NumPy and PyTorch for the imitation / policy-gradient / actor-critic drills.
