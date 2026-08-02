@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+.venv/
+venv/
+.env
+.conda/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Training artifacts
+**/models/
+**/videos/
+**/results/
+**/Logdir/
+**/wandb/
+**/buffer/
+*.pt
+*.pth
+*.mp4
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+*.swp
+.omx/
+
+# Hydra / local runs
+outputs/
+multirun/
+*.log

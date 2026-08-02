@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CS224R Lectures 1–4 — Mastery Problems</title>
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(', '\\)']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  <style>
+    :root { --ink:#18212b; --blue:#17365d; --accent:#3178c6; --soft:#f3f7fb; --gold:#e2a400; }
+    * { box-sizing:border-box; }
+    body { max-width:1000px; margin:38px auto; padding:0 24px 80px; font:17px/1.65 system-ui,sans-serif; color:var(--ink); }
+    h1,h2 { color:var(--blue); line-height:1.25; } h3 { color:#245b8f; margin-top:30px; }
+    nav,section { margin:34px 0; } nav a { margin-right:15px; }
+    .note,.problem,.equation { border-radius:6px; }
+    .note { padding:14px 17px; background:#fff8df; border-left:4px solid var(--gold); }
+    .equation { padding:12px 16px; margin:14px 0; background:var(--soft); border-left:4px solid var(--accent); overflow-x:auto; }
+    .problem { padding:18px 20px; margin:18px 0; border:1px solid #d8e1ea; background:#fff; }
+    .problem h3 { margin:0 0 8px; }
+    .tag { display:inline-block; padding:2px 8px; margin-left:7px; border-radius:999px; background:#e8f1fb; color:#234d78; font-size:13px; vertical-align:middle; }
+    li { margin:9px 0; } code { background:#eef1f4; padding:2px 5px; border-radius:4px; }
+    details { margin-top:12px; color:#3d5268; } summary { cursor:pointer; font-weight:650; }
+    table { border-collapse:collapse; width:100%; } th,td { border:1px solid #d8e1ea; padding:9px; text-align:left; }
+    a { color:#1769aa; }
+  </style>
+</head>
+<body>
+  <h1>CS224R Lectures 1–4: Mastery Problems</h1>
+  <p>This set follows the official Spring 2026 slides. It is deliberately harder than the course warm-ups: completing it requires derivation, numerical work, implementation, and debugging—not memorization.</p>
+  <p>
+    <a href="https://cs224r.stanford.edu/slides/01_cs224r_intro_2026.pdf">Lecture 1</a> ·
+    <a href="https://cs224r.stanford.edu/slides/02_cs224r_imitation_2026.pdf">Lecture 2</a> ·
+    <a href="https://cs224r.stanford.edu/slides/03_cs224r_policy_gradients_2026.pdf">Lecture 3</a> ·
+    <a href="https://cs224r.stanford.edu/slides/04_cs224r_actor_critic_2026.pdf">Lecture 4</a>
+  </p>
+  <div class="note"><strong>Mastery rule:</strong> write assumptions, shapes, and reasoning. A correct final number without a defensible derivation does not count. These are original practice problems, not Stanford homework solutions.</div>
+
+  <nav>
+    <a href="#lecture-1">Lecture 1</a>
+    <a href="#lecture-2">Lecture 2</a>
+    <a href="#lecture-3">Lecture 3</a>
+    <a href="#lecture-4">Lecture 4</a>
+    <a href="#capstone">Capstone</a>
+    <a href="#code">Code map</a>
+  </nav>
+
+  <section id="lecture-1">
+    <h2>Lecture 1 — Modeling behavior, MDPs, and objectives</h2>
+
+    <article class="problem">
+      <h3>1. Observation aliasing and the Markov property <span class="tag">proof + design</span></h3>
+      <p>A one-dimensional robot has hidden state \(s_t=(x_t,v_t)\), action \(a_t\in\{-1,+1\}\), and deterministic dynamics</p>
+      <div class="equation">\[x_{t+1}=x_t+v_t,\qquad v_{t+1}=v_t+a_t.\]</div>
+      <p>The policy observes only \(o_t=x_t\). Its goal is to minimize \(x_{t+2}^2+0.1v_{t+2}^2\).</p>
+      <ol type="a">
+        <li>Construct two histories with the same \(o_t\) but different optimal actions.</li>
+        <li>Use them to prove that no memoryless policy \(\pi(a_t\mid o_t)\) can be optimal for every reachable hidden state.</li>
+        <li>Give the smallest sufficient policy input: either an augmented observation or a finite observation/action history. Justify sufficiency.</li>
+        <li>Explain why treating observations as states changes the factorization of the trajectory distribution.</li>
+      </ol>
+      <details><summary>Hint</summary><p>Use equal positions with opposite velocities. Ask whether one previous position is enough to recover velocity.</p></details>
+    </article>
+
+    <article class="problem">
+      <h3>2. Trajectory likelihood and the RL gradient <span class="tag">full derivation</span></h3>
+      <p>For a finite-horizon MDP, start from</p>
+      <div class="equation">\[p_\theta(\tau)=p(s_1)\prod_{t=1}^{T}\pi_\theta(a_t\mid s_t)p(s_{t+1}\mid s_t,a_t),\qquad J(\theta)=\mathbb E_{\tau\sim p_\theta}[R(\tau)].\]</div>
+      <ol type="a">
+        <li>Derive \(\nabla_\theta J(\theta)\) using the log-derivative trick. Do not skip the integral/sum over trajectories.</li>
+        <li>Show exactly why the initial-state and transition-dynamics terms vanish from \(\nabla_\theta\log p_\theta(\tau)\).</li>
+        <li>State what changes if the environment dynamics themselves depend on \(\theta\).</li>
+        <li>Explain why the estimator can be computed without knowing \(p(s_{t+1}\mid s_t,a_t)\), despite the dynamics appearing in \(p_\theta(\tau)\).</li>
+      </ol>
+    </article>
+
+    <article class="problem">
+      <h3>3. Exact evaluation of a looping policy <span class="tag">linear algebra</span></h3>
+      <p>There are nonterminal states \(s_0,s_1\) and terminal state \(s_\bot\). Let \(\gamma=0.9\). Transitions are deterministic:</p>
+      <table>
+        <tr><th>State</th><th>Action</th><th>Reward</th><th>Next state</th></tr>
+        <tr><td>\(s_0\)</td><td>\(a\)</td><td>0</td><td>\(s_1\)</td></tr>
+        <tr><td>\(s_0\)</td><td>\(b\)</td><td>1</td><td>\(s_0\)</td></tr>
+        <tr><td>\(s_1\)</td><td>\(a\)</td><td>3</td><td>\(s_\bot\)</td></tr>
+        <tr><td>\(s_1\)</td><td>\(b\)</td><td>-1</td><td>\(s_0\)</td></tr>
+      </table>
+      <p>The policy satisfies \(\pi(a\mid s_0)=0.6\) and \(\pi(a\mid s_1)=0.25\).</p>
+      <ol type="a">
+        <li>Construct \(P_\pi\) and \(r_\pi\) over the two nonterminal states.</li>
+        <li>Solve \((I-\gamma P_\pi)V^\pi=r_\pi\) exactly.</li>
+        <li>Compute every \(Q^\pi(s,a)\) and \(A^\pi(s,a)\).</li>
+        <li>Verify \(\sum_a\pi(a\mid s)A^\pi(s,a)=0\) separately at each state.</li>
+        <li>Without fully re-solving the system, predict the direction in which \(V^\pi(s_0)\) changes if \(\pi(a\mid s_1)\) increases.</li>
+      </ol>
+      <p><strong>Code:</strong> <code>practice_templates/mdp_practice.py</code>.</p>
+    </article>
+
+    <article class="problem">
+      <h3>4. Formulate before choosing an algorithm <span class="tag">systems reasoning</span></h3>
+      <p>For each setting below, define state/observation, action, trajectory, reward, and the main source of stochasticity. Then choose imitation learning, policy gradients, actor–critic, value-based RL, or model-based RL and defend the choice using data cost, action space, reward access, stability, and model learnability.</p>
+      <ol type="a">
+        <li>A robot with 50 teleoperated demonstrations and expensive physical interaction.</li>
+        <li>A text agent with a cheap simulator but only terminal task success.</li>
+        <li>A deterministic board game with discrete actions and exact simulator resets.</li>
+        <li>An autonomous vehicle for which unsafe online exploration is prohibited.</li>
+      </ol>
+      <p>For one case, argue for a hybrid rather than a single algorithm.</p>
+    </article>
+  </section>
+
+  <section id="lecture-2">
+    <h2>Lecture 2 — Expressive imitation learning, flow matching, and DAgger</h2>
+
+    <article class="problem">
+      <h3>5. Why a larger network does not fix a unimodal output <span class="tag">derivation</span></h3>
+      <p>At a fixed state \(s\), the expert action is \(-2\) or \(+2\), each with probability \(1/2\).</p>
+      <ol type="a">
+        <li>Derive the deterministic prediction minimizing expected MSE and compute its expected loss.</li>
+        <li>Show that fixed-variance Gaussian maximum likelihood reduces to MSE up to scale and an additive constant.</li>
+        <li>Explain why arbitrarily increasing neural-network capacity cannot make a single Gaussian represent the two modes at this state.</li>
+        <li>Construct a two-component Gaussian mixture that represents the data as component variance approaches zero. Discuss the likelihood pathology that appears.</li>
+        <li>Give a control example where the conditional mean is not merely unlikely but catastrophically invalid.</li>
+      </ol>
+    </article>
+
+    <article class="problem">
+      <h3>6. Distribution expressivity audit <span class="tag">comparison</span></h3>
+      <p>You must model a 12-dimensional action chunk with three temporally coherent modes. Compare a diagonal Gaussian, a three-component Gaussian mixture, discretized autoregression, and a flow-matching policy.</p>
+      <ol type="a">
+        <li>For each, describe how it can or cannot represent cross-timestep correlation and multiple modes.</li>
+        <li>Distinguish neural-network expressivity from distribution-family expressivity.</li>
+        <li>Rank the four approaches by sampling latency, likelihood availability, and ease of training. State every assumption behind your ranking.</li>
+        <li>Choose a representation under a strict 5 ms inference budget, then explain what capability you sacrificed.</li>
+      </ol>
+    </article>
+
+    <article class="problem">
+      <h3>7. Flow matching from training pair to ODE solver <span class="tag">math + implementation</span></h3>
+      <p>Let clean action chunk \(a_1=(0.2,0.8)\), noise \(a_0=(-1,1)\), and \(\tau=0.25\).</p>
+      <ol type="a">
+        <li>Compute \(a_\tau=\tau a_1+(1-\tau)a_0\) and target velocity \(u=a_1-a_0\).</li>
+        <li>For prediction \(v_\theta(a_\tau,s,\tau)=(1.0,-0.1)\), compute the sample MSE under both “mean over coordinates” and “sum over coordinates” conventions.</li>
+        <li>Explain why the optimal learned vector field is a conditional expectation when different \((a_0,a_1)\) pairs can yield the same \(a_\tau\).</li>
+        <li>Starting at \(x(0)=-1\), approximate \(dx/dt=0.5x+t\) at \(t=1\) using forward Euler with \(n=1,2,4\). Compare convergence against the analytic solution.</li>
+        <li>Explain why clamping every Euler step to an action bound can change the induced terminal distribution, even if the final action must be bounded.</li>
+      </ol>
+      <p><strong>Code:</strong> <code>practice_templates/imitation_practice.py</code>.</p>
+    </article>
+
+    <article class="problem">
+      <h3>8. Action chunking under receding-horizon control <span class="tag">shape + control</span></h3>
+      <p>An episode has 37 actions. Training chunks have horizon \(H=8\). At deployment, the policy predicts 8 actions and executes \(K=3\) before replanning.</p>
+      <ol type="a">
+        <li>How many full overlapping training pairs \((s_t,a_{t:t+H})\) can be formed?</li>
+        <li>List every policy-query timestep needed to execute a 20-step episode, including the final partial execution.</li>
+        <li>Compare \(K=1\), \(K=3\), and \(K=8\) in feedback frequency, inference cost, smoothness, and disturbance recovery.</li>
+        <li>A disturbance occurs immediately after the first executed action in a chunk. Derive the maximum number of stale actions executed before feedback can affect behavior.</li>
+        <li>Explain why overlapping chunks from one trajectory must not be randomly split across training and validation if the goal is an honest generalization estimate.</li>
+      </ol>
+    </article>
+
+    <article class="problem">
+      <h3>9. Compounding error and DAgger <span class="tag">bound + design</span></h3>
+      <p>A behavior-cloning policy has per-step error \(\epsilon\) under the expert state distribution, horizon \(T\), and a mistake can move it into states absent from the demonstrations.</p>
+      <ol type="a">
+        <li>Give an argument for why sequence cost can scale like \(O(T^2\epsilon)\) rather than \(O(T\epsilon)\).</li>
+        <li>Identify the distribution mismatch that prevents the supervised validation loss from predicting rollout performance.</li>
+        <li>Write DAgger as a sequence of state distributions, expert queries, dataset unions, and policy updates.</li>
+        <li>With 1,000 expert labels, compare one collection round with ten adaptive rounds. Explain which better covers states induced by later policies.</li>
+        <li>State two safety or interface failures of ordinary DAgger and explain how human-gated DAgger changes data collection.</li>
+      </ol>
+    </article>
+
+    <article class="problem">
+      <h3>10. Ambiguous experts during dataset aggregation <span class="tag">counterexample</span></h3>
+      <p>At a fork, either an upper or lower route succeeds, but switching routes midway fails. An expert independently chooses a route on every query.</p>
+      <ol type="a">
+        <li>Show how per-state relabeling can produce internally inconsistent action chunks.</li>
+        <li>Predict the MSE policy’s behavior on the aggregated dataset.</li>
+        <li>Compare three remedies: persistent expert intent, an explicit latent route variable, and an expressive generative policy.</li>
+        <li>Which remedy changes the data, which changes the policy class, and which changes both the training interface and deployment semantics?</li>
+      </ol>
+    </article>
+  </section>
+
+  <section id="lecture-3">
+    <h2>Lecture 3 — Policy gradients, variance reduction, and off-policy correction</h2>
+
+    <article class="problem">
+      <h3>11. Derive REINFORCE without hand-waving <span class="tag">proof</span></h3>
+      <p>Starting from \(J(\theta)=\sum_\tau p_\theta(\tau)R(\tau)\), derive</p>
+      <div class="equation">\[\nabla_\theta J(\theta)=\mathbb E_{\tau\sim p_\theta}\left[\sum_t\nabla_\theta\log\pi_\theta(a_t\mid s_t)R(\tau)\right].\]</div>
+      <p>Your derivation must justify exchanging gradient and expectation, use \(\nabla p=p\nabla\log p\), expand the trajectory log-probability, and identify the Monte Carlo approximation. Then explain why the resulting estimator is unbiased but can have enormous variance.</p>
+    </article>
+
+    <article class="problem">
+      <h3>12. Causality and reward-to-go <span class="tag">proof + numbers</span></h3>
+      <ol type="a">
+        <li>Prove that, in expectation, rewards strictly before \(a_t\) contribute zero to \(\nabla_\theta\log\pi_\theta(a_t\mid s_t)\).</li>
+        <li>For rewards \((2,-1,0,5)\) and \(\gamma=0.9\), compute every reward-to-go.</li>
+        <li>Compare the scalar weight assigned to \(a_4\) by total-trajectory return and reward-to-go. Explain the variance difference.</li>
+        <li>Does the causality argument require the policy input itself to be Markov? Defend your answer.</li>
+      </ol>
+    </article>
+
+    <article class="problem">
+      <h3>13. Baselines: unbiasedness and the actual optimum <span class="tag">advanced derivation</span></h3>
+      <p>Let \(g=\nabla_\theta\log\pi_\theta(a\mid s)\) and estimator \(g(G-b)\).</p>
+      <ol type="a">
+        <li>Prove that any state-dependent, action-independent \(b(s)\) preserves the expected gradient.</li>
+        <li>Minimize \(\mathbb E[\lVert g\rVert^2(G-b)^2\mid s]\) with respect to scalar \(b\) and derive the variance-minimizing baseline.</li>
+        <li>State the condition under which this becomes \(b(s)=\mathbb E[G\mid s]=V^\pi(s)\).</li>
+        <li>Give an example where subtracting the batch mean return reduces variance but introduces a small finite-batch dependency. Explain whether that invalidates practical use.</li>
+      </ol>
+    </article>
+
+    <article class="problem">
+      <h3>14. Exact softmax policy-gradient calculation <span class="tag">numerical</span></h3>
+      <p>A one-state, three-action policy has logits \(z=(0.3,-0.2,0.1)\). A batch contains \((a,G)=(0,4),(1,-1),(0,2),(2,3)\), with baseline \(b=1\).</p>
+      <ol type="a">
+        <li>Compute the softmax probabilities.</li>
+        <li>Use \(\nabla_z\log\pi(a)=e_a-\pi\) to compute every sample contribution.</li>
+        <li>Average them to obtain the gradient estimate.</li>
+        <li>Predict the first-order change in every action probability after gradient ascent.</li>
+        <li>Repeat conceptually after normalizing advantages to zero mean and unit variance. What changes and what does not?</li>
+      </ol>
+      <p><strong>Code:</strong> <code>practice_templates/policy_gradient_practice.py</code>.</p>
+    </article>
+
+    <article class="problem">
+      <h3>15. Importance sampling across a trajectory <span class="tag">off-policy</span></h3>
+      <p>For a three-step sampled trajectory, the behavior-policy action probabilities are \((0.8,0.4,0.2)\) and target-policy probabilities are \((0.4,0.5,0.6)\).</p>
+      <ol type="a">
+        <li>Compute each per-step ratio and the full trajectory ratio.</li>
+        <li>Explain why multiplying ratios across long horizons creates a heavy-tailed estimator.</li>
+        <li>Show what fails if the behavior policy assigns zero probability to an action the target policy may select.</li>
+        <li>Contrast ordinary trajectory importance sampling, per-decision importance sampling, clipping, and self-normalization in bias and variance.</li>
+        <li>For weights \((0.1,0.2,0.7,4.0)\), compute effective sample size \((\sum_iw_i)^2/\sum_iw_i^2\) and interpret it.</li>
+      </ol>
+    </article>
+
+    <article class="problem">
+      <h3>16. KL-constrained reuse of one batch <span class="tag">trust region</span></h3>
+      <p>An old Bernoulli policy has \(\pi_{old}(1)=0.2\). Candidate new probabilities are \(0.25,0.5,0.9\). Estimated advantages are \(A(1)=2\) and \(A(0)=-0.5\).</p>
+      <ol type="a">
+        <li>Compute \(D_{KL}(\pi_{old}\Vert\pi_{new})\) for each candidate.</li>
+        <li>Compute the old-policy expectation of the importance-weighted surrogate for each candidate.</li>
+        <li>Choose the best candidate under KL budget \(0.1\).</li>
+        <li>Explain why advantages estimated under the old policy become stale after a large update, even when importance ratios are present.</li>
+      </ol>
+    </article>
+
+    <article class="problem">
+      <h3>17. Find the broken policy-gradient implementation <span class="tag">debugging</span></h3>
+      <pre><code>for episode in range(N):
+    actions = policy(states).argmax(-1)
+    logp = policy(states).log_prob(actions).detach()
+    weight = rewards.sum()
+    loss += (logp * weight).mean()
+
+for epoch in range(100):
+    optimizer.zero_grad()
+    loss.backward(retain_graph=True)
+    optimizer.step()</code></pre>
+      <p>Find at least six independent problems. Your answer must cover exploration, gradient flow, ascent/descent sign, causal credit assignment, stale on-policy data, and graph/parameter reuse. Write corrected pseudocode and add two diagnostics that would catch silent failure.</p>
+    </article>
+  </section>
+
+  <section id="lecture-4">
+    <h2>Lecture 4 — Actor–critic, value estimation, and replay</h2>
+
+    <article class="problem">
+      <h3>18. Value, Q, advantage, and TD residual are not synonyms <span class="tag">exact reasoning</span></h3>
+      <p>Use the MDP and policy from Problem 3.</p>
+      <ol type="a">
+        <li>For every possible transition, compute the exact TD residual \(\delta=r+\gamma V^\pi(s')-V^\pi(s)\).</li>
+        <li>Show that \(\mathbb E[\delta\mid s,a]=A^\pi(s,a)\) when \(V=V^\pi\).</li>
+        <li>Show that \(\mathbb E_{a\sim\pi,\,s'}[\delta\mid s]=0\).</li>
+        <li>Explain why one sampled TD residual is a noisy advantage estimate even with a perfect value function.</li>
+      </ol>
+    </article>
+
+    <article class="problem">
+      <h3>19. Monte Carlo, TD, and \(n\)-step targets <span class="tag">numerical</span></h3>
+      <p>A trajectory has rewards \((2,-1,0,5)\), discount \(\gamma=0.9\), and terminates after the fourth reward. Current estimates are \(V(s_0),\ldots,V(s_4)=(4,3,2,1,0)\).</p>
+      <ol type="a">
+        <li>At \(s_0\), compute the one-step, two-step, three-step, and full Monte Carlo targets.</li>
+        <li>Compute the corresponding target errors relative to \(V(s_0)\).</li>
+        <li>If every nonterminal value estimate is shifted upward by constant \(c\), derive how the one-step TD residual changes.</li>
+        <li>Explain why a constant error cancels from \(Q-V\) but generally does not cancel exactly from a discounted TD residual.</li>
+        <li>Rank the targets by expected bias and variance, stating the assumptions needed for the ranking.</li>
+      </ol>
+      <p><strong>Code:</strong> <code>practice_templates/actor_critic_practice.py</code>.</p>
+    </article>
+
+    <article class="problem">
+      <h3>20. Critic learning and the moving-target problem <span class="tag">computational graph</span></h3>
+      <ol type="a">
+        <li>Write the Monte Carlo critic objective and the one-step bootstrapped critic objective.</li>
+        <li>Draw or describe the computation graph for \((V_\phi(s_t)-[r_t+\gamma V_\phi(s_{t+1})])^2\).</li>
+        <li>Explain the semi-gradient choice: why should the target branch usually be detached?</li>
+        <li>Compare updating labels once per rollout versus recomputing bootstrapped labels after every critic update.</li>
+        <li>Construct a two-state example where a poor bootstrap target propagates its error backward.</li>
+      </ol>
+    </article>
+
+    <article class="problem">
+      <h3>21. Full actor–critic batch by hand <span class="tag">losses + signs</span></h3>
+      <p>A batch has log-probabilities \((-0.2,-1.1,-0.7)\), TD advantages \((1.5,-0.5,2.0)\), value predictions \((2,1,4)\), and fixed value targets \((3,0,5)\).</p>
+      <ol type="a">
+        <li>Compute the mean actor loss \(L_\pi=-\frac1B\sum_t\log\pi(a_t\mid s_t)\hat A_t\).</li>
+        <li>Compute the mean squared critic loss.</li>
+        <li>For each action, state whether its probability should rise or fall.</li>
+        <li>Identify every quantity that should be stop-gradient when updating the actor and when updating the critic.</li>
+        <li>Explain one failure caused by sharing a neural-network trunk between actor and critic without managing the two gradient signals.</li>
+      </ol>
+    </article>
+
+    <article class="problem">
+      <h3>22. PPO clipping as a piecewise objective <span class="tag">numerical + graph</span></h3>
+      <p>Let \(\epsilon=0.2\). For ratios \(\rho\in\{0.5,0.9,1.1,1.4\}\), evaluate</p>
+      <div class="equation">\[\min\left(\rho A,\operatorname{clip}(\rho,0.8,1.2)A\right)\]</div>
+      <p>once for \(A=3\) and once for \(A=-3\).</p>
+      <ol type="a">
+        <li>Make the full eight-entry table.</li>
+        <li>Identify regions where the clipped objective has zero gradient with respect to \(\rho\).</li>
+        <li>Explain the asymmetry between positive and negative advantages.</li>
+        <li>Compare clipping with an explicit KL constraint: what does clipping constrain only indirectly?</li>
+      </ol>
+    </article>
+
+    <article class="problem">
+      <h3>23. Repair an actor–critic algorithm after adding a replay buffer <span class="tag">off-policy design</span></h3>
+      <p>An on-policy actor–critic stores all old transitions and then continues fitting \(V^\pi(s)\) to old Monte Carlo returns while updating the current policy.</p>
+      <ol type="a">
+        <li>Explain why both the state distribution and return labels are now mismatched to the current policy.</li>
+        <li>Replace the critic with a \(Q(s,a)\) Bellman target suitable for one-step replay data.</li>
+        <li>Explain the roles of target networks, twin critics with a minimum target, and a bounded update-to-data ratio.</li>
+        <li>Give two valid policy-update routes: likelihood-ratio correction and a differentiable/reparameterized \(Q(s,\pi(s))\) objective. State their assumptions.</li>
+        <li>Explain why replay-buffer methods are often more data-efficient yet harder to tune than PPO-style methods.</li>
+      </ol>
+    </article>
+  </section>
+
+  <section id="capstone">
+    <h2>Capstone — demonstrate integrated understanding</h2>
+    <article class="problem">
+      <h3>24. Design and defend a learning system <span class="tag">oral-exam level</span></h3>
+      <p>A continuous-control robot receives 30 successful demonstrations, has sparse terminal reward, can collect only 50,000 additional environment steps, and occasionally enters states absent from demonstrations. Its action sequences have two valid modes.</p>
+      <p>Design an end-to-end system. Your proposal must specify:</p>
+      <ol>
+        <li>the state or observation history and why it is sufficient;</li>
+        <li>a policy distribution capable of representing both modes;</li>
+        <li>whether and how to use action chunking;</li>
+        <li>behavior-cloning pretraining and an online correction strategy;</li>
+        <li>on-policy versus replay-buffer fine-tuning;</li>
+        <li>critic targets and advantage estimates;</li>
+        <li>protection against overly large policy updates;</li>
+        <li>five diagnostics or ablations that distinguish representation failure, covariate shift, critic error, exploration failure, and optimization instability.</li>
+      </ol>
+      <p>Finish with a failure table: symptom, likely cause, measurement, and intervention. You have mastered Lectures 1–4 when you can defend every design choice and its rejected alternative.</p>
+    </article>
+  </section>
+
+  <section id="code">
+    <h2>Coding mastery map</h2>
+    <table>
+      <tr><th>Template</th><th>Problems exercised</th><th>Core checks</th></tr>
+      <tr><td><code>mdp_practice.py</code></td><td>1–3</td><td>returns with terminals, trajectory likelihood, exact policy evaluation, \(Q/A\), occupancy</td></tr>
+      <tr><td><code>imitation_practice.py</code></td><td>5–10</td><td>chunks, BC, mixture likelihood, flow interpolation/Euler sampling, DAgger aggregation</td></tr>
+      <tr><td><code>policy_gradient_practice.py</code></td><td>11–17</td><td>reward-to-go, score vectors, REINFORCE, optimal baseline, importance ratios, KL, PPO surrogate</td></tr>
+      <tr><td><code>actor_critic_practice.py</code></td><td>18–23</td><td>TD residuals, \(n\)-step targets, GAE extension, actor/critic losses, Bellman targets, target updates</td></tr>
+    </table>
+    <p>Run <code>python -m unittest discover -s practice_templates/tests -v</code> after implementing TODOs. Start with one lecture file; the tests are intentionally red until its functions are correct.</p>
+  </section>
+</body>
+</html>
